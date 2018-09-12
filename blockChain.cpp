@@ -1,7 +1,7 @@
 #define byte uint8_t
 
 #include "SHA256.h"
-#include "hex2bin.h"
+#include "Hex2Bin.h"
 
 #include <iostream>
 #include <ctime>
@@ -10,12 +10,28 @@
 
 using namespace std;
 
-struct book
+struct Book
 {
 	string title;
+	string author;
 	string isbn;
-	bool ability_to_share;
-	bool checkOut;
+	bool abilityToShare;
+	bool checkedOut;
+};
+
+ostream& operator<<(ostream& os, const Book& b)
+{
+	os	<<"Title: "
+		<< b.title
+		<< "\nAuthor: "
+		<< b.author
+		<< "\nISBN: "
+		<< b.isbn
+		<< "\nAbility To Share: "
+		<< b.abilityToShare
+		<< "\nChecked Out: "
+		<< b.checkedOut;
+	return os;
 }
 
 //function to get currrent timestamp
@@ -35,32 +51,39 @@ class Block
 	string blockData;					//data of block
 	string prevHash;				//hash of previous block
 	string blockHash;				//hash of current block
-	
+	string dataString;
+	Book blockBook;
+	string strBook;
 	//function to compute hash of block
-	string hashBlock()
+	void hashBlock()
 	{
-		//convert index from int to string
-		string s = to_string(this->index);
-		
+
 		//create string to store all block data and append data into that data string
 		string data;
-		data.append(s);
+		//convert index from int to string
+		dataString = to_string(this->index);
+		data.append(dataString);
+
+		//NEW 8.26.2018 book implementation
+
+		strBook = (bookToString(blockBook));
+		data.append(strBook);
 		data.append(this->timeStamp);
-		data.append(this->blockData);
-		data.append(this->prevHash);	
-		
+//		data.append(this->blockData);
+		data.append(this->prevHash);
+
 		int endNum = checkHash(data);
 		//cout << endNum << endl;
-		
+
 		data.append(to_string(endNum));
 
 		//convert data string into const char array
 		const char *cstr = data.c_str();
 		//compute hash of data with SHA256
 		this->blockHash = SHA256(cstr);
-			
+
 	}
-	
+
 	//proof of work function
 	int checkHash(string data)
 	{
@@ -73,13 +96,13 @@ class Block
 		string checkHash;
 		string check;
 		string binHash;
-		string zeros = "0000000000000000000000000000000000000000000000";
+		string zeros(n, '0');
 		//this is the special number
 		int hashNum = 0;
 		while(properHash == false)
 		{
 			//cout << hashNum << endl;
-			
+
 			//copy data into temporary variable
 			tmp = data;
 			// adding number to test hash
@@ -92,7 +115,7 @@ class Block
 			binHash = hex_str_to_bin_str(checkHash);
 			//check if first n characters of hash are 0s
 			//cout << binHash << "\n" << checkHash << endl;
-			
+
 			if(binHash.substr(0, n) != zeros.substr(0, n))
 			{
 				//if not, increase hashNum by one and try again
@@ -101,13 +124,26 @@ class Block
 			else
 				//if so, return the special number
 				properHash = true;
-			
-			delete[] writable;		
+
+			delete[] writable;
 		}
-		cout << binHash << endl;
+		//cout << binHash << endl;
 		return hashNum;
 	}
-	
+
+
+	string bookToString(Book b)
+	{
+		string s;
+		s.append(b.title);
+		s.append(b.author);
+		s.append(b.isbn);
+		s.append(to_string(b.abilityToShare));
+		s.append(to_string(b.checkedOut));
+
+		return s;
+	}
+
 };
 
 //function to create next block
@@ -126,26 +162,38 @@ Block nextBlock(Block lastBlock, string tm)
 
 int main()
 {
-	
+
 	//index of block to maintain order
 	int GIndex = 0;
-	
+
+	//genesis book
+	Book genesisBook = {
+	"Turtles All the Way Down",	//Title
+	"John Green",			//Author
+	"97805255555353",		//isbn
+	true,				//ability to share
+	false,				//checkedOut
+	};
+
+//	cout << genesisBook << endl;
+
 	//get current timestamp
 	long int now = unix_timestamp();
 	//create first block and assign data
 	Block genesisBlock;
 	genesisBlock.index = GIndex;
+	genesisBlock.blockBook = genesisBook;
 	genesisBlock.timeStamp = to_string(now);
-	genesisBlock.blockData = "GenesisBlock";
+//	genesisBlock.blockData = "GenesisBlock";
 	genesisBlock.prevHash = "0";
 	genesisBlock.hashBlock();
-	
+
 	//make genesis block the previous block
 	Block lastBlock = genesisBlock;
-	
-	
-	
-	/*//loop to create new blocks
+
+//	cout << now << endl;
+	cout << lastBlock.blockBook << "\n" << lastBlock.blockHash << endl;
+	//loop to create new blocks
 	while(GIndex < 10)
 	{
 		//create new block to be processed
@@ -156,12 +204,12 @@ int main()
 		currentBlock = nextBlock(lastBlock, to_string(now));
 		//compute hash of current block
 		currentBlock.hashBlock();
-		cout << currentBlock.blockData << " " << currentBlock.blockHash << endl;
+		cout << currentBlock.blockBook << " " << currentBlock.blockHash << endl;
 		//make current block previous block
 		lastBlock = currentBlock;
 		//increase index by 1
 		GIndex++;
-	}*/
-	
+	}
+
 	return 0;
 }
